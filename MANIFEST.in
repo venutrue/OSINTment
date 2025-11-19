@@ -1,0 +1,8 @@
+include README.md
+include LICENSE
+include QUICKSTART.md
+include requirements.txt
+include .env.example
+recursive-include osintment/templates *
+recursive-exclude osintment *.pyc
+recursive-exclude osintment __pycache__
