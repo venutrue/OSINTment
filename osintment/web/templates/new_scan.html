@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}New Scan{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1><i class="fas fa-search"></i> New OSINT Scan</h1>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form id="newScanForm" class="scan-form">
+                <div class="form-group">
+                    <label for="target">Target <span class="required">*</span></label>
+                    <input type="text" id="target" name="target" class="form-control"
+                           placeholder="example.com, 192.168.1.1, email@example.com, or person name" required>
+                    <small class="form-text">Enter a domain, IP address, email, username, or person name to investigate</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="scanName">Scan Name</label>
+                    <input type="text" id="scanName" name="scanName" class="form-control"
+                           placeholder="Optional - will be auto-generated if not provided">
+                    <small class="form-text">Give your scan a memorable name for easy identification</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="scanType">Scan Type <span class="required">*</span></label>
+                    <select id="scanType" name="scanType" class="form-control">
+                        <option value="all">Comprehensive - All modules (recommended)</option>
+                        <option value="passive">Passive - Non-intrusive reconnaissance only</option>
+                        <option value="footprint">Footprint - Infrastructure mapping</option>
+                        <option value="investigate">Investigate - Deep investigation</option>
+                    </select>
+                    <small class="form-text">
+                        <strong>Comprehensive:</strong> Uses all available modules for maximum coverage<br>
+                        <strong>Passive:</strong> Only passive techniques, no active queries to target<br>
+                        <strong>Footprint:</strong> Focus on infrastructure and attack surface<br>
+                        <strong>Investigate:</strong> Deep dive investigation mode
+                    </small>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-rocket"></i> Start Scan
+                    </button>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary btn-lg">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                </div>
+            </form>
+
+            <div id="scanProgress" class="scan-progress" style="display: none;">
+                <div class="progress-header">
+                    <h3><i class="fas fa-spinner fa-spin"></i> Scan Started</h3>
+                    <p id="scanStatus">Initializing scan...</p>
+                    <p><strong>Scan ID:</strong> <code id="scanId"></code></p>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+                <div class="progress-actions">
+                    <a id="viewScanLink" href="#" class="btn btn-primary">
+                        <i class="fas fa-eye"></i> View Scan Details
+                    </a>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                        <i class="fas fa-list"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="info-section">
+        <h2><i class="fas fa-info-circle"></i> Scan Information</h2>
+        <div class="info-grid">
+            <div class="info-card">
+                <h3><i class="fas fa-clock"></i> Scan Duration</h3>
+                <p>Scans typically take 10-30 minutes depending on the target and scan type. Passive scans are usually faster.</p>
+            </div>
+
+            <div class="info-card">
+                <h3><i class="fas fa-shield-alt"></i> Legal Notice</h3>
+                <p>Ensure you have proper authorization before scanning any targets. Unauthorized scanning may be illegal.</p>
+            </div>
+
+            <div class="info-card">
+                <h3><i class="fas fa-lightbulb"></i> Best Practices</h3>
+                <p>Start with passive scans for initial reconnaissance. Use comprehensive scans for detailed investigations.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('newScanForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    startNewScan();
+});
+
+function startNewScan() {
+    const target = document.getElementById('target').value;
+    const scanName = document.getElementById('scanName').value;
+    const scanType = document.getElementById('scanType').value;
+
+    const data = {
+        target: target,
+        scan_name: scanName || `Scan - ${target} - ${new Date().toLocaleString()}`,
+        scan_type: scanType
+    };
+
+    // Hide form and show progress
+    document.getElementById('newScanForm').style.display = 'none';
+    document.getElementById('scanProgress').style.display = 'block';
+
+    fetch('/api/scan/start', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Scan started successfully!', 'success');
+            document.getElementById('scanStatus').innerHTML = '<span class="status-success"><i class="fas fa-check-circle"></i> Scan running...</span>';
+            document.getElementById('scanId').textContent = data.scan_id;
+
+            const viewLink = document.getElementById('viewScanLink');
+            viewLink.href = `/scan/${data.scan_id}`;
+
+            // Start polling for status
+            pollScanStatus(data.scan_id);
+        } else {
+            showNotification('Error: ' + (data.error || 'Failed to start scan'), 'error');
+            document.getElementById('newScanForm').style.display = 'block';
+            document.getElementById('scanProgress').style.display = 'none';
+        }
+    })
+    .catch(error => {
+        showNotification('Error starting scan: ' + error.message, 'error');
+        document.getElementById('newScanForm').style.display = 'block';
+        document.getElementById('scanProgress').style.display = 'none';
+        console.error('Error:', error);
+    });
+}
+
+function pollScanStatus(scanId) {
+    const interval = setInterval(() => {
+        fetch(`/api/scan/${scanId}/status`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.status) {
+                    const status = data.status.status || 'Unknown';
+                    document.getElementById('scanStatus').innerHTML = `Status: <strong>${status}</strong>`;
+
+                    if (status.includes('FINISHED')) {
+                        clearInterval(interval);
+                        document.getElementById('scanStatus').innerHTML = '<span class="status-success"><i class="fas fa-check-circle"></i> Scan completed successfully!</span>';
+                        showNotification('Scan completed! You can now generate a report.', 'success');
+                    } else if (status.includes('ERROR') || status.includes('ABORTED')) {
+                        clearInterval(interval);
+                        document.getElementById('scanStatus').innerHTML = '<span class="status-error"><i class="fas fa-times-circle"></i> Scan failed or was aborted</span>';
+                        showNotification('Scan failed. Please check the logs.', 'error');
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error polling status:', error);
+            });
+    }, 10000); // Poll every 10 seconds
+}
+</script>
+{% endblock %}

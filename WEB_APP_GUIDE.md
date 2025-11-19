@@ -1,0 +1,416 @@
+# OSINTment Web Application Guide
+
+## Overview
+
+OSINTment now includes a professional web application interface alongside the CLI tool. The web app provides an intuitive, browser-based interface for managing OSINT scans and generating reports.
+
+## Features
+
+### 🌐 Web Interface
+- **Modern Dashboard** - View all scans at a glance
+- **Interactive Forms** - Start new scans with ease
+- **Real-time Updates** - Monitor scan progress live
+- **Report Management** - Generate and download reports
+- **Responsive Design** - Works on desktop and mobile
+
+### 📊 Capabilities
+- Start OSINT scans via web interface
+- Monitor scan status in real-time
+- View scan results in browser
+- Generate reports in multiple formats (HTML, PDF, JSON, CSV)
+- Download reports directly
+- Search and filter scan results
+
+## Installation
+
+The web application is included with OSINTment. Install dependencies:
+
+```bash
+pip install -e .
+```
+
+This installs Flask and all required dependencies.
+
+## Running the Web Server
+
+### Quick Start
+
+```bash
+# Start the web server (default: http://0.0.0.0:5000)
+osintment-web
+```
+
+Then open your browser to:
+- http://localhost:5000 (local access)
+- http://YOUR_IP:5000 (network access)
+
+### Custom Configuration
+
+```bash
+# Custom port
+osintment-web --port 8000
+
+# Specific host
+osintment-web --host 127.0.0.1 --port 8080
+
+# Debug mode (for development)
+osintment-web --debug
+```
+
+### Alternative Start Method
+
+```bash
+# Run as Python module
+python -m osintment.web_server
+
+# With options
+python -m osintment.web_server --host 0.0.0.0 --port 5000
+```
+
+## Prerequisites
+
+Before using the web application, ensure SpiderFoot is running:
+
+```bash
+# In a separate terminal
+cd spiderfoot
+python3 sf.py -l 127.0.0.1:5001
+```
+
+## Configuration
+
+The web app uses the same `.env` configuration as the CLI:
+
+```bash
+# .env file
+SPIDERFOOT_URL=http://localhost:5001
+SPIDERFOOT_API_KEY=
+
+REPORT_OUTPUT_DIR=./reports
+COMPANY_NAME=Your Company Name
+REPORT_AUTHOR=OSINT Team
+
+LOG_LEVEL=INFO
+DEBUG=False
+```
+
+## Using the Web Application
+
+### Home Page
+
+The home page provides:
+- Quick scan form for rapid OSINT investigations
+- Feature overview
+- System status indicators
+- SpiderFoot connectivity check
+
+**To start a quick scan:**
+1. Enter target (domain, IP, email, etc.)
+2. Select scan type
+3. Click "Start Scan"
+4. Monitor progress in real-time
+
+### Dashboard
+
+Access all your scans:
+- View scan list with status
+- Filter by status
+- Generate reports
+- View scan details
+
+**To view dashboard:**
+- Navigate to `/dashboard` or click "Dashboard" in nav
+
+### New Scan Page
+
+Detailed scan configuration:
+- Enter target and custom name
+- Choose scan type:
+  - **Comprehensive** - All modules (recommended)
+  - **Passive** - Non-intrusive only
+  - **Footprint** - Infrastructure mapping
+  - **Investigate** - Deep dive
+- Monitor scan progress
+- Automatic status updates
+
+**To create a new scan:**
+1. Click "New Scan" in navigation
+2. Fill in target and options
+3. Click "Start Scan"
+4. View real-time progress
+
+### Scan Details
+
+View comprehensive scan information:
+- Scan metadata (ID, target, status, etc.)
+- Progress indicator
+- Results summary by type
+- Full results table with search
+- Generate report button
+
+**To view scan details:**
+- Click on any scan from the dashboard
+- Or navigate to `/scan/<SCAN_ID>`
+
+### Reports Page
+
+Manage generated reports:
+- View all reports
+- Filter by format (HTML, PDF, JSON, CSV)
+- Download reports
+- View HTML reports in browser
+
+**To access reports:**
+- Click "Reports" in navigation
+- Or navigate to `/reports`
+
+## API Endpoints
+
+The web app exposes REST API endpoints:
+
+### Scan Management
+
+```
+POST /api/scan/start
+  Body: { "target": "example.com", "scan_type": "all", "scan_name": "My Scan" }
+  Response: { "success": true, "scan_id": "..." }
+
+GET /api/scan/<scan_id>/status
+  Response: { "success": true, "status": {...}, "progress": {...} }
+
+GET /api/scan/<scan_id>/results
+  Response: { "success": true, "results": [...], "count": 123 }
+
+GET /api/scans/list
+  Response: { "success": true, "scans": [...] }
+```
+
+### Report Generation
+
+```
+POST /api/report/generate
+  Body: { "scan_id": "...", "format": "pdf", "filename": "report" }
+  Response: { "success": true, "report_path": "...", "download_url": "..." }
+
+GET /api/report/download/<filename>
+  Response: File download
+
+GET /api/reports/list
+  Response: { "success": true, "reports": [...] }
+```
+
+### Configuration
+
+```
+GET /api/config/check
+  Response: { "success": true, "connected": true, "modules_count": 200, ... }
+```
+
+## Integration with CLI
+
+The web app and CLI work seamlessly together:
+
+1. **Start scan via CLI, view in web:**
+   ```bash
+   # CLI
+   osintment scan example.com --no-wait
+
+   # Then view in web dashboard
+   ```
+
+2. **Generate report from web scan via CLI:**
+   ```bash
+   osintment report <SCAN_ID> --format pdf
+   ```
+
+3. **Share scan data:**
+   - Both interfaces access the same SpiderFoot instance
+   - Reports generated by either are accessible to both
+
+## Deployment
+
+### Development
+
+```bash
+osintment-web --debug
+```
+
+### Production
+
+For production deployment, use a WSGI server like Gunicorn:
+
+```bash
+# Install Gunicorn
+pip install gunicorn
+
+# Run with Gunicorn
+gunicorn -w 4 -b 0.0.0.0:5000 osintment.web.app:app
+```
+
+### Docker Deployment (Future)
+
+```dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+COPY . .
+
+RUN pip install -e .
+
+EXPOSE 5000
+
+CMD ["osintment-web", "--host", "0.0.0.0"]
+```
+
+### Nginx Reverse Proxy
+
+```nginx
+server {
+    listen 80;
+    server_name osintment.example.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+## Security Considerations
+
+### Authentication
+
+The current version doesn't include authentication. For production:
+
+1. **Add authentication:**
+   - Use Flask-Login or Flask-Security
+   - Implement OAuth2
+   - Add API key authentication
+
+2. **HTTPS:**
+   - Use reverse proxy (Nginx/Apache) with SSL
+   - Or configure Flask with SSL certificates
+
+3. **Network Security:**
+   - Run on internal network only
+   - Use VPN for remote access
+   - Implement firewall rules
+
+### Sample Authentication (Future Enhancement)
+
+```python
+from flask_login import LoginManager, login_required
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    # Protected route
+    pass
+```
+
+## Troubleshooting
+
+### Server Won't Start
+
+```bash
+# Check if port is already in use
+lsof -i :5000
+
+# Try different port
+osintment-web --port 8000
+```
+
+### Can't Connect to SpiderFoot
+
+```bash
+# Check SpiderFoot is running
+curl http://localhost:5001
+
+# Check .env configuration
+osintment config-check
+```
+
+### Reports Not Generating
+
+```bash
+# Check write permissions
+ls -la ./reports
+
+# Create directory if missing
+mkdir -p ./reports
+```
+
+### CSS/JS Not Loading
+
+Clear browser cache or hard refresh:
+- Chrome/Firefox: Ctrl+Shift+R
+- Safari: Cmd+Shift+R
+
+## Performance Tips
+
+1. **Use pagination** for large result sets
+2. **Enable caching** for static assets
+3. **Use production WSGI server** (Gunicorn/uWSGI)
+4. **Configure reverse proxy** (Nginx) for static files
+5. **Use Redis** for session management (large deployments)
+
+## Browser Compatibility
+
+Tested and supported:
+- ✅ Chrome/Chromium 90+
+- ✅ Firefox 88+
+- ✅ Safari 14+
+- ✅ Edge 90+
+
+## Keyboard Shortcuts
+
+- `Ctrl + /` - Focus search (where applicable)
+- `Esc` - Close modals
+- `F5` - Refresh data
+
+## Screenshots
+
+### Home Page
+Modern landing page with quick scan form and feature showcase
+
+### Dashboard
+Comprehensive view of all scans with status indicators
+
+### Scan Detail
+Real-time scan progress and results visualization
+
+### Reports
+Easy access to all generated reports with download options
+
+## Contributing
+
+To contribute to the web interface:
+
+1. Frontend changes: Edit files in `osintment/web/templates/` and `osintment/web/static/`
+2. Backend changes: Edit `osintment/web/app.py`
+3. Test locally with `--debug` flag
+4. Submit pull request
+
+## Future Enhancements
+
+Planned features:
+- [ ] User authentication and roles
+- [ ] WebSocket for real-time updates
+- [ ] Scan scheduling
+- [ ] Custom report templates
+- [ ] Export to more formats
+- [ ] Data visualization charts
+- [ ] Collaborative features
+- [ ] API rate limiting
+- [ ] Audit logs
+
+## Support
+
+- Issues: https://github.com/venutrue/OSINTment/issues
+- CLI Guide: See README.md
+- Quick Start: See QUICKSTART.md
+
+---
+
+**Happy OSINT Investigation! 🔍**

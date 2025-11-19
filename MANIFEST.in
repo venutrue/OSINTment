@@ -1,8 +1,11 @@
 include README.md
 include LICENSE
 include QUICKSTART.md
+include WEB_APP_GUIDE.md
 include requirements.txt
 include .env.example
 recursive-include osintment/templates *
+recursive-include osintment/web/templates *
+recursive-include osintment/web/static *
 recursive-exclude osintment *.pyc
 recursive-exclude osintment __pycache__

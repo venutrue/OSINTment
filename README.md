@@ -2,13 +2,14 @@
 
 > Professional OSINT Automation and Reporting Tool with SpiderFoot Integration
 
-OSINTment is a powerful command-line tool that integrates with SpiderFoot to automate Open Source Intelligence (OSINT) gathering and generates professional, consulting-grade reports in HTML and PDF formats.
+OSINTment is a powerful OSINT automation platform that integrates with SpiderFoot to automate Open Source Intelligence (OSINT) gathering and generates professional, consulting-grade reports. Available as both a **command-line tool** and **web application** with a modern browser interface.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
 
 ## Features
 
+### Core Features
 - **🔍 Automated OSINT Scanning**: Seamless integration with SpiderFoot for comprehensive intelligence gathering
 - **📊 Professional Reports**: Generate elegant, consulting-grade reports in HTML and PDF formats
 - **📈 Data Analysis**: Automatically categorize and analyze scan results
@@ -16,7 +17,12 @@ OSINTment is a powerful command-line tool that integrates with SpiderFoot to aut
 - **💼 Executive Summaries**: Auto-generated executive summaries with key metrics
 - **🔐 Security Findings**: Highlight critical security issues and vulnerabilities
 - **📱 Multiple Export Formats**: Export data in HTML, PDF, JSON, and CSV formats
+
+### Interface Options
 - **🎨 Beautiful CLI**: Rich terminal interface with progress indicators and colored output
+- **🌐 Web Application**: Modern browser-based interface with real-time updates
+- **📱 Responsive Design**: Web UI works on desktop, tablet, and mobile
+- **🔄 Real-time Progress**: Live scan status updates in the web interface
 
 ## Prerequisites
 
@@ -86,7 +92,35 @@ DEBUG=False
 
 ## Usage
 
-### Basic Commands
+OSINTment can be used via **command-line** or **web interface**.
+
+### Web Application (Recommended for Beginners)
+
+Start the web server:
+
+```bash
+# Start web interface
+osintment-web
+
+# Custom port
+osintment-web --port 8000
+
+# Access at http://localhost:5000
+```
+
+Then open your browser to `http://localhost:5000` and use the intuitive web interface to:
+- Start scans with a simple form
+- Monitor progress in real-time
+- View results in your browser
+- Generate and download reports
+
+**See [WEB_APP_GUIDE.md](WEB_APP_GUIDE.md) for complete web application documentation.**
+
+### Command-Line Interface
+
+For advanced users and automation:
+
+#### Basic Commands
 
 #### Run a Scan
 
