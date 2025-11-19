@@ -1,0 +1,30 @@
+# Core dependencies
+requests>=2.31.0
+python-dotenv>=1.0.0
+
+# SpiderFoot integration
+aiohttp>=3.9.0
+
+# Report generation
+jinja2>=3.1.2
+weasyprint>=60.0
+markdown>=3.5
+plotly>=5.18.0
+pandas>=2.1.0
+
+# PDF generation
+reportlab>=4.0.0
+pypdf>=3.17.0
+
+# Data visualization
+matplotlib>=3.8.0
+seaborn>=0.13.0
+
+# CLI interface
+click>=8.1.7
+colorama>=0.4.6
+rich>=13.7.0
+
+# Utilities
+pyyaml>=6.0.1
+python-dateutil>=2.8.2
