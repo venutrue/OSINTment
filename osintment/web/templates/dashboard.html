@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1><i class="fas fa-chart-line"></i> Dashboard</h1>
+        <a href="{{ url_for('new_scan_page') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> New Scan
+        </a>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-error">
+        <i class="fas fa-exclamation-circle"></i>
+        <strong>Error:</strong> {{ error }}
+    </div>
+    {% endif %}
+
+    <div class="scans-section">
+        <div class="card">
+            <div class="card-header">
+                <h2><i class="fas fa-list"></i> All Scans</h2>
+                <button onclick="refreshScans()" class="btn btn-secondary btn-sm">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+            <div class="card-body">
+                {% if scans %}
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Scan Name</th>
+                                <th>Target</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scansTableBody">
+                            {% for scan in scans %}
+                            <tr>
+                                <td>
+                                    <strong>{{ scan.name or 'Unnamed Scan' }}</strong>
+                                </td>
+                                <td>
+                                    <code>{{ scan.target or 'N/A' }}</code>
+                                </td>
+                                <td>
+                                    <span class="badge badge-{% if 'FINISHED' in (scan.status or '') %}success{% elif 'RUNNING' in (scan.status or '') or 'STARTED' in (scan.status or '') %}warning{% elif 'ERROR' in (scan.status or '') or 'ABORTED' in (scan.status or '') %}error{% else %}info{% endif %}">
+                                        {{ scan.status or 'Unknown' }}
+                                    </span>
+                                </td>
+                                <td>{{ scan.created or 'N/A' }}</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <a href="/scan/{{ scan.id }}" class="btn btn-sm btn-secondary" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <button onclick="generateReport('{{ scan.id }}')" class="btn btn-sm btn-primary" title="Generate Report">
+                                            <i class="fas fa-file-pdf"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-inbox"></i>
+                    <h3>No scans found</h3>
+                    <p>Start your first OSINT scan to see it here</p>
+                    <a href="{{ url_for('new_scan_page') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Create New Scan
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Report Generation Modal -->
+<div id="reportModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fas fa-file-alt"></i> Generate Report</h2>
+            <span class="modal-close" onclick="closeReportModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="reportForm">
+                <input type="hidden" id="reportScanId" name="scan_id">
+
+                <div class="form-group">
+                    <label for="reportFormat">Report Format</label>
+                    <select id="reportFormat" name="format" class="form-control">
+                        <option value="html">HTML</option>
+                        <option value="pdf">PDF</option>
+                        <option value="json">JSON</option>
+                        <option value="csv">CSV</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="reportFilename">Filename (optional)</label>
+                    <input type="text" id="reportFilename" name="filename" class="form-control" placeholder="my_report">
+                </div>
+
+                <div id="reportProgress" style="display: none;">
+                    <div class="progress-bar">
+                        <div class="progress-fill"></div>
+                    </div>
+                    <p id="reportStatus">Generating report...</p>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" onclick="closeReportModal()" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-file-pdf"></i> Generate Report
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function refreshScans() {
+    location.reload();
+}
+
+function generateReport(scanId) {
+    document.getElementById('reportScanId').value = scanId;
+    document.getElementById('reportModal').style.display = 'block';
+}
+
+function closeReportModal() {
+    document.getElementById('reportModal').style.display = 'none';
+    document.getElementById('reportProgress').style.display = 'none';
+}
+
+document.getElementById('reportForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const scanId = document.getElementById('reportScanId').value;
+    const format = document.getElementById('reportFormat').value;
+    const filename = document.getElementById('reportFilename').value;
+
+    document.getElementById('reportProgress').style.display = 'block';
+
+    fetch('/api/report/generate', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            scan_id: scanId,
+            format: format,
+            filename: filename
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Report generated successfully!', 'success');
+            document.getElementById('reportStatus').innerHTML = `
+                <span class="status-success"><i class="fas fa-check-circle"></i> Report ready!</span><br>
+                <a href="${data.download_url}" class="btn btn-primary btn-sm" download>
+                    <i class="fas fa-download"></i> Download ${data.filename}
+                </a>
+            `;
+        } else {
+            showNotification('Error: ' + (data.error || 'Failed to generate report'), 'error');
+            document.getElementById('reportProgress').style.display = 'none';
+        }
+    })
+    .catch(error => {
+        showNotification('Error generating report: ' + error.message, 'error');
+        document.getElementById('reportProgress').style.display = 'none';
+        console.error('Error:', error);
+    });
+});
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('reportModal');
+    if (event.target == modal) {
+        closeReportModal();
+    }
+}
+</script>
+{% endblock %}

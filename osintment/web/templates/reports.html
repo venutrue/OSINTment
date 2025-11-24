@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Reports{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1><i class="fas fa-file-alt"></i> Generated Reports</h1>
+        <button onclick="refreshReports()" class="btn btn-secondary">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2><i class="fas fa-folder-open"></i> All Reports</h2>
+            <div class="filter-group">
+                <select id="filterFormat" onchange="filterReports()" class="form-control">
+                    <option value="">All Formats</option>
+                    <option value=".html">HTML</option>
+                    <option value=".pdf">PDF</option>
+                    <option value=".json">JSON</option>
+                    <option value=".csv">CSV</option>
+                </select>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="reportsContainer">
+                <div class="loading-spinner">
+                    <i class="fas fa-spinner fa-spin"></i> Loading reports...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadReports();
+});
+
+function loadReports() {
+    fetch('/api/reports/list')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayReports(data.reports);
+            } else {
+                showNotification('Error loading reports', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('reportsContainer').innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <h3>Error Loading Reports</h3>
+                    <p>${error.message}</p>
+                </div>
+            `;
+        });
+}
+
+function displayReports(reports) {
+    const container = document.getElementById('reportsContainer');
+
+    if (!reports || reports.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <h3>No reports found</h3>
+                <p>Generate a report from the dashboard to see it here</p>
+                <a href="/dashboard" class="btn btn-primary">
+                    <i class="fas fa-chart-line"></i> Go to Dashboard
+                </a>
+            </div>
+        `;
+        return;
+    }
+
+    const reportsHtml = reports.map(report => {
+        const sizeKB = (report.size / 1024).toFixed(2);
+        const icon = getFileIcon(report.extension);
+        const date = new Date(report.modified).toLocaleString();
+
+        return `
+            <div class="report-card" data-extension="${report.extension}">
+                <div class="report-icon">
+                    <i class="fas ${icon}"></i>
+                </div>
+                <div class="report-info">
+                    <h3>${report.filename}</h3>
+                    <div class="report-meta">
+                        <span><i class="fas fa-calendar"></i> ${date}</span>
+                        <span><i class="fas fa-file"></i> ${sizeKB} KB</span>
+                        <span class="badge badge-${getBadgeColor(report.extension)}">${report.extension.toUpperCase().replace('.', '')}</span>
+                    </div>
+                </div>
+                <div class="report-actions">
+                    <a href="${report.download_url}" class="btn btn-primary btn-sm" download>
+                        <i class="fas fa-download"></i> Download
+                    </a>
+                    ${report.extension === '.html' ? `
+                        <a href="${report.download_url}" target="_blank" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-external-link-alt"></i> View
+                        </a>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = `<div class="reports-grid">${reportsHtml}</div>`;
+}
+
+function getFileIcon(extension) {
+    const icons = {
+        '.html': 'fa-file-code',
+        '.pdf': 'fa-file-pdf',
+        '.json': 'fa-file-code',
+        '.csv': 'fa-file-csv'
+    };
+    return icons[extension] || 'fa-file';
+}
+
+function getBadgeColor(extension) {
+    const colors = {
+        '.html': 'info',
+        '.pdf': 'error',
+        '.json': 'warning',
+        '.csv': 'success'
+    };
+    return colors[extension] || 'info';
+}
+
+function refreshReports() {
+    document.getElementById('reportsContainer').innerHTML = `
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i> Loading reports...
+        </div>
+    `;
+    loadReports();
+}
+
+function filterReports() {
+    const filter = document.getElementById('filterFormat').value;
+    const cards = document.querySelectorAll('.report-card');
+
+    cards.forEach(card => {
+        if (filter === '' || card.dataset.extension === filter) {
+            card.style.display = 'flex';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="hero">
+        <h1 class="hero-title">
+            <i class="fas fa-satellite-dish"></i>
+            OSINTment
+        </h1>
+        <p class="hero-subtitle">Professional OSINT Automation and Reporting Tool</p>
+        <p class="hero-description">
+            Automated intelligence gathering with professional, consulting-grade reports
+        </p>
+    </div>
+
+    <div class="quick-scan-section">
+        <div class="card">
+            <div class="card-header">
+                <h2><i class="fas fa-rocket"></i> Quick Scan</h2>
+            </div>
+            <div class="card-body">
+                <form id="quickScanForm" class="quick-scan-form">
+                    <div class="form-row">
+                        <div class="form-group flex-grow">
+                            <label for="target">Target</label>
+                            <input type="text" id="target" name="target" placeholder="example.com, 192.168.1.1, or email@example.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="scanType">Scan Type</label>
+                            <select id="scanType" name="scanType">
+                                <option value="all">Comprehensive</option>
+                                <option value="passive">Passive Only</option>
+                                <option value="footprint">Footprint</option>
+                                <option value="investigate">Investigate</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>&nbsp;</label>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i> Start Scan
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <div id="scanProgress" class="scan-progress" style="display: none;">
+                    <div class="progress-header">
+                        <h3><i class="fas fa-spinner fa-spin"></i> Scan in Progress</h3>
+                        <p id="scanStatus">Initializing scan...</p>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill"></div>
+                    </div>
+                    <div class="progress-actions">
+                        <a id="viewScanLink" href="#" class="btn btn-secondary">
+                            <i class="fas fa-eye"></i> View Details
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="features-section">
+        <h2 class="section-title">Features</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-search"></i>
+                </div>
+                <h3>Automated OSINT Scanning</h3>
+                <p>Seamless integration with SpiderFoot for comprehensive intelligence gathering using 200+ modules</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-file-pdf"></i>
+                </div>
+                <h3>Professional Reports</h3>
+                <p>Generate elegant, consulting-grade reports in HTML and PDF formats perfect for client deliverables</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                <h3>Data Analysis</h3>
+                <p>Automatically categorize and analyze scan results with executive summaries and key metrics</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <h3>Security Findings</h3>
+                <p>Highlight critical security issues, vulnerabilities, and malicious indicators</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-network-wired"></i>
+                </div>
+                <h3>Domain Intelligence</h3>
+                <p>Discover domains, subdomains, IP addresses, and network infrastructure</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-download"></i>
+                </div>
+                <h3>Multiple Exports</h3>
+                <p>Export data in HTML, PDF, JSON, and CSV formats for integration with other tools</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="stats-section">
+        <h2 class="section-title">System Status</h2>
+        <div id="systemStatus" class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-server"></i>
+                </div>
+                <div class="stat-content">
+                    <h4>SpiderFoot</h4>
+                    <p id="spiderfootStatus">Checking...</p>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-plug"></i>
+                </div>
+                <div class="stat-content">
+                    <h4>Modules</h4>
+                    <p id="modulesCount">--</p>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-folder"></i>
+                </div>
+                <div class="stat-content">
+                    <h4>Report Directory</h4>
+                    <p id="reportDir">--</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Check system configuration
+    checkSystemStatus();
+
+    // Handle quick scan form
+    document.getElementById('quickScanForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        startQuickScan();
+    });
+});
+
+function checkSystemStatus() {
+    fetch('/api/config/check')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.connected) {
+                document.getElementById('spiderfootStatus').innerHTML = '<span class="status-success"><i class="fas fa-check-circle"></i> Connected</span>';
+                document.getElementById('modulesCount').textContent = data.modules_count + ' available';
+            } else {
+                document.getElementById('spiderfootStatus').innerHTML = '<span class="status-error"><i class="fas fa-times-circle"></i> Disconnected</span>';
+                document.getElementById('modulesCount').textContent = 'N/A';
+            }
+            document.getElementById('reportDir').textContent = data.report_dir || 'Not configured';
+        })
+        .catch(error => {
+            document.getElementById('spiderfootStatus').innerHTML = '<span class="status-error"><i class="fas fa-times-circle"></i> Error</span>';
+            console.error('Error checking system status:', error);
+        });
+}
+
+function startQuickScan() {
+    const target = document.getElementById('target').value;
+    const scanType = document.getElementById('scanType').value;
+
+    const data = {
+        target: target,
+        scan_type: scanType,
+        scan_name: `Quick Scan - ${target}`
+    };
+
+    // Show progress
+    document.getElementById('scanProgress').style.display = 'block';
+    document.getElementById('scanStatus').textContent = 'Starting scan...';
+
+    fetch('/api/scan/start', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Scan started successfully!', 'success');
+            document.getElementById('scanStatus').textContent = 'Scan running...';
+
+            const viewLink = document.getElementById('viewScanLink');
+            viewLink.href = `/scan/${data.scan_id}`;
+
+            // Poll for status
+            pollScanStatus(data.scan_id);
+        } else {
+            showNotification('Error: ' + (data.error || 'Failed to start scan'), 'error');
+            document.getElementById('scanProgress').style.display = 'none';
+        }
+    })
+    .catch(error => {
+        showNotification('Error starting scan: ' + error.message, 'error');
+        document.getElementById('scanProgress').style.display = 'none';
+        console.error('Error:', error);
+    });
+}
+
+function pollScanStatus(scanId) {
+    const interval = setInterval(() => {
+        fetch(`/api/scan/${scanId}/status`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.status) {
+                    const status = data.status.status || 'Unknown';
+                    document.getElementById('scanStatus').textContent = `Status: ${status}`;
+
+                    if (status.includes('FINISHED')) {
+                        clearInterval(interval);
+                        document.getElementById('scanStatus').innerHTML = '<span class="status-success"><i class="fas fa-check-circle"></i> Scan completed!</span>';
+                        showNotification('Scan completed successfully!', 'success');
+                    } else if (status.includes('ERROR') || status.includes('ABORTED')) {
+                        clearInterval(interval);
+                        document.getElementById('scanStatus').innerHTML = '<span class="status-error"><i class="fas fa-times-circle"></i> Scan failed</span>';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error polling status:', error);
+            });
+    }, 10000); // Poll every 10 seconds
+}
+</script>
+{% endblock %}

@@ -33,12 +33,15 @@ setup(
         'click>=8.1.7',
         'colorama>=0.4.6',
         'rich>=13.7.0',
+        'flask>=3.0.0',
+        'flask-cors>=4.0.0',
         'pyyaml>=6.0.1',
         'python-dateutil>=2.8.2',
     ],
     entry_points={
         'console_scripts': [
             'osintment=osintment.cli:main',
+            'osintment-web=osintment.web_server:main',
         ],
     },
     classifiers=[

@@ -3,6 +3,8 @@ from typing import Dict, List, Any, Set
 from collections import defaultdict, Counter
 from datetime import datetime
 
+from ..core.cve_lookup import TechnologyAnalyzer, extract_technologies_from_results
+
 
 class ScanDataAnalyzer:
     """Analyze and structure SpiderFoot scan results"""
@@ -18,6 +20,7 @@ class ScanDataAnalyzer:
         self.scan_results = scan_results
         self.scan_info = scan_info
         self.categorized_data = self._categorize_results()
+        self._tech_analyzer = TechnologyAnalyzer()
 
     def _categorize_results(self) -> Dict[str, List[Dict[str, Any]]]:
         """Categorize scan results by data type"""
@@ -242,6 +245,37 @@ class ScanDataAnalyzer:
 
         return efficiency
 
+    def get_technology_analysis(self) -> Dict[str, Any]:
+        """
+        Get comprehensive technology analysis with versions and CVEs
+
+        Returns:
+            Dictionary containing:
+            - technologies: List of detected technologies with versions
+            - categorized: Technologies grouped by category
+            - cves_by_technology: CVEs for each technology
+            - critical_cves: High/Critical severity CVEs
+            - risk_score: Overall technology risk score
+            - risk_level: Risk level (CRITICAL/HIGH/MEDIUM/LOW/NONE)
+        """
+        try:
+            return self._tech_analyzer.analyze(self.scan_results)
+        except Exception as e:
+            # Return empty analysis if CVE lookup fails
+            return {
+                'technologies': extract_technologies_from_results(self.scan_results),
+                'categorized': {},
+                'cves_by_technology': {},
+                'critical_cves': [],
+                'total_technologies': 0,
+                'total_cves_found': 0,
+                'critical_cve_count': 0,
+                'high_cve_count': 0,
+                'risk_score': 0,
+                'risk_level': 'UNKNOWN',
+                'error': str(e)
+            }
+
     def generate_full_analysis(self) -> Dict[str, Any]:
         """Generate complete analysis package"""
         return {
@@ -249,6 +283,7 @@ class ScanDataAnalyzer:
             'critical_findings': self.get_critical_findings(),
             'domain_intelligence': self.get_domain_intelligence(),
             'technology_stack': self.get_technology_stack(),
+            'technology_analysis': self.get_technology_analysis(),
             'network_intelligence': self.get_network_intelligence(),
             'contact_information': self.get_contact_information(),
             'security_findings': self.get_security_findings(),

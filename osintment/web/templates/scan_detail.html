@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block title %}Scan Details{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1><i class="fas fa-search"></i> Scan Details</h1>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <div class="scan-detail-container">
+        <!-- Scan Info Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2><i class="fas fa-info-circle"></i> Scan Information</h2>
+                <button onclick="refreshScanData()" class="btn btn-secondary btn-sm">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="scanInfo" class="scan-info-grid">
+                    <div class="info-item">
+                        <strong>Scan ID:</strong>
+                        <code id="scanIdDisplay">{{ scan_id }}</code>
+                    </div>
+                    <div class="info-item">
+                        <strong>Status:</strong>
+                        <span id="scanStatus">Loading...</span>
+                    </div>
+                    <div class="info-item">
+                        <strong>Target:</strong>
+                        <code id="scanTarget">--</code>
+                    </div>
+                    <div class="info-item">
+                        <strong>Scan Name:</strong>
+                        <span id="scanName">--</span>
+                    </div>
+                    <div class="info-item">
+                        <strong>Created:</strong>
+                        <span id="scanCreated">--</span>
+                    </div>
+                    <div class="info-item">
+                        <strong>Total Results:</strong>
+                        <span id="resultsCount">--</span>
+                    </div>
+                </div>
+
+                <div id="scanProgress" class="progress-section" style="display: none;">
+                    <h3>Scan Progress</h3>
+                    <div class="progress-bar">
+                        <div class="progress-fill"></div>
+                    </div>
+                    <p id="progressStatus">Scanning in progress...</p>
+                </div>
+
+                <div class="scan-actions">
+                    <button onclick="generateReportModal()" class="btn btn-primary" id="generateReportBtn" disabled>
+                        <i class="fas fa-file-pdf"></i> Generate Report
+                    </button>
+                    <button onclick="viewResults()" class="btn btn-secondary" id="viewResultsBtn" disabled>
+                        <i class="fas fa-list"></i> View Results
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Summary Card -->
+        <div class="card" id="resultsCard" style="display: none;">
+            <div class="card-header">
+                <h2><i class="fas fa-chart-pie"></i> Results Summary</h2>
+            </div>
+            <div class="card-body">
+                <div id="resultsSummary"></div>
+            </div>
+        </div>
+
+        <!-- Results Table -->
+        <div class="card" id="resultsTableCard" style="display: none;">
+            <div class="card-header">
+                <h2><i class="fas fa-table"></i> Scan Results</h2>
+                <input type="text" id="searchResults" placeholder="Search results..." class="form-control search-input">
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="data-table" id="resultsTable">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Data</th>
+                                <th>Module</th>
+                                <th>Confidence</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const scanId = '{{ scan_id }}';
+let scanData = null;
+let resultsData = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadScanData();
+    startStatusPolling();
+});
+
+function loadScanData() {
+    // Load scan status
+    fetch(`/api/scan/${scanId}/status`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.status) {
+                updateScanInfo(data.status);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading scan data:', error);
+            showNotification('Error loading scan data', 'error');
+        });
+}
+
+function updateScanInfo(status) {
+    scanData = status;
+
+    document.getElementById('scanTarget').textContent = status.target || 'N/A';
+    document.getElementById('scanName').textContent = status.name || 'Unnamed Scan';
+    document.getElementById('scanCreated').textContent = status.created || 'N/A';
+
+    const scanStatus = status.status || 'Unknown';
+    let statusBadge = '';
+
+    if (scanStatus.includes('FINISHED')) {
+        statusBadge = `<span class="badge badge-success">${scanStatus}</span>`;
+        document.getElementById('generateReportBtn').disabled = false;
+        document.getElementById('viewResultsBtn').disabled = false;
+        loadResults();
+    } else if (scanStatus.includes('RUNNING') || scanStatus.includes('STARTED')) {
+        statusBadge = `<span class="badge badge-warning">${scanStatus}</span>`;
+        document.getElementById('scanProgress').style.display = 'block';
+    } else if (scanStatus.includes('ERROR') || scanStatus.includes('ABORTED')) {
+        statusBadge = `<span class="badge badge-error">${scanStatus}</span>`;
+    } else {
+        statusBadge = `<span class="badge badge-info">${scanStatus}</span>`;
+    }
+
+    document.getElementById('scanStatus').innerHTML = statusBadge;
+}
+
+function loadResults() {
+    fetch(`/api/scan/${scanId}/results`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                resultsData = data.results;
+                document.getElementById('resultsCount').textContent = data.count;
+                displayResults(data.results);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading results:', error);
+        });
+}
+
+function displayResults(results) {
+    if (!results || results.length === 0) {
+        return;
+    }
+
+    // Show results cards
+    document.getElementById('resultsCard').style.display = 'block';
+    document.getElementById('resultsTableCard').style.display = 'block';
+
+    // Populate results table
+    const tbody = document.getElementById('resultsTableBody');
+    tbody.innerHTML = '';
+
+    results.slice(0, 100).forEach(result => { // Show first 100 results
+        const row = tbody.insertRow();
+        row.innerHTML = `
+            <td><span class="badge badge-info">${result.type || 'N/A'}</span></td>
+            <td><code>${(result.data || 'N/A').substring(0, 100)}</code></td>
+            <td>${result.module || 'N/A'}</td>
+            <td>${result.confidence || 100}%</td>
+        `;
+    });
+
+    // Create summary
+    const typeCounts = {};
+    results.forEach(r => {
+        const type = r.type || 'Unknown';
+        typeCounts[type] = (typeCounts[type] || 0) + 1;
+    });
+
+    const summaryHtml = Object.entries(typeCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([type, count]) => `
+            <div class="summary-item">
+                <strong>${type}:</strong> ${count} findings
+            </div>
+        `).join('');
+
+    document.getElementById('resultsSummary').innerHTML = summaryHtml;
+}
+
+function startStatusPolling() {
+    setInterval(() => {
+        fetch(`/api/scan/${scanId}/status`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.status) {
+                    updateScanInfo(data.status);
+                }
+            })
+            .catch(error => {
+                console.error('Error polling status:', error);
+            });
+    }, 10000); // Poll every 10 seconds
+}
+
+function refreshScanData() {
+    loadScanData();
+}
+
+function viewResults() {
+    document.getElementById('resultsTableCard').scrollIntoView({ behavior: 'smooth' });
+}
+
+function generateReportModal() {
+    // Redirect to dashboard with report generation
+    window.location.href = `/dashboard`;
+    // Could also open a modal here
+}
+
+// Search functionality
+document.getElementById('searchResults')?.addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    const rows = document.querySelectorAll('#resultsTableBody tr');
+
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(searchTerm) ? '' : 'none';
+    });
+});
+</script>
+{% endblock %}
