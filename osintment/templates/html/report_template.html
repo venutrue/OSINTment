@@ -507,6 +507,108 @@
         </div>
         {% endif %}
 
+        <!-- Technology Analysis with CVEs -->
+        {% if technology_analysis and technology_analysis.technologies %}
+        <div class="content-page">
+            <div class="header">
+                <h1>Technology Analysis & CVEs</h1>
+            </div>
+
+            <!-- Risk Summary -->
+            <div class="alert alert-{% if technology_analysis.risk_level == 'CRITICAL' %}critical{% elif technology_analysis.risk_level == 'HIGH' %}warning{% else %}info{% endif %}">
+                <div class="alert-title">Technology Risk Assessment</div>
+                <p>
+                    <strong>Risk Level:</strong> {{ technology_analysis.risk_level }}<br>
+                    <strong>Risk Score:</strong> {{ technology_analysis.risk_score }}/10<br>
+                    <strong>Technologies Detected:</strong> {{ technology_analysis.total_technologies }}<br>
+                    <strong>CVEs Found:</strong> {{ technology_analysis.total_cves_found }} ({{ technology_analysis.critical_cve_count }} Critical, {{ technology_analysis.high_cve_count }} High)
+                </p>
+            </div>
+
+            <h2>Detected Technologies with Versions</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Technology</th>
+                        <th>Version</th>
+                        <th>Category</th>
+                        <th>Source Module</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tech in technology_analysis.technologies[:30] %}
+                    <tr>
+                        <td><strong>{{ tech.name }}</strong></td>
+                        <td>{% if tech.version %}<code>{{ tech.version }}</code>{% else %}<span class="text-muted">Unknown</span>{% endif %}</td>
+                        <td>{{ tech.type }}</td>
+                        <td>{{ tech.module }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% if technology_analysis.critical_cves %}
+            <h2>Critical & High Severity CVEs</h2>
+            <div class="alert alert-critical">
+                <div class="alert-title">Security Vulnerabilities Detected</div>
+                <p>The following known vulnerabilities affect technologies detected on the target. Immediate remediation is recommended.</p>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>CVE ID</th>
+                        <th>Technology</th>
+                        <th>Severity</th>
+                        <th>CVSS</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cve in technology_analysis.critical_cves %}
+                    <tr>
+                        <td><strong>{{ cve.cve_id }}</strong></td>
+                        <td>{{ cve.technology }}</td>
+                        <td><span class="badge badge-{% if cve.severity == 'CRITICAL' %}critical{% else %}high{% endif %}">{{ cve.severity }}</span></td>
+                        <td>{{ cve.cvss_score or 'N/A' }}</td>
+                        <td>{{ cve.description[:200] }}{% if cve.description|length > 200 %}...{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+
+            {% if technology_analysis.cves_by_technology %}
+            <h2>CVEs by Technology</h2>
+            {% for tech_name, cves in technology_analysis.cves_by_technology.items() %}
+            <h3>{{ tech_name }}</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>CVE ID</th>
+                        <th>Severity</th>
+                        <th>CVSS Score</th>
+                        <th>Published</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cve in cves %}
+                    <tr>
+                        <td><strong>{{ cve.cve_id }}</strong></td>
+                        <td><span class="badge badge-{% if cve.severity == 'CRITICAL' %}critical{% elif cve.severity == 'HIGH' %}high{% elif cve.severity == 'MEDIUM' %}medium{% else %}low{% endif %}">{{ cve.severity }}</span></td>
+                        <td>{{ cve.cvss_score or 'N/A' }}</td>
+                        <td>{{ cve.published }}</td>
+                        <td>{{ cve.description[:150] }}{% if cve.description|length > 150 %}...{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endfor %}
+            {% endif %}
+        </div>
+        {% endif %}
+
         <!-- Contact Information -->
         {% if contacts.emails or contacts.phone_numbers or contacts.social_profiles %}
         <div class="content-page">

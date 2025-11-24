@@ -112,6 +112,7 @@ class ReportGenerator:
             'critical_findings': analysis['critical_findings'],
             'domain_intel': analysis['domain_intelligence'],
             'technology_stack': analysis['technology_stack'],
+            'technology_analysis': analysis.get('technology_analysis', {}),
             'network_intel': analysis['network_intelligence'],
             'contacts': analysis['contact_information'],
             'security_findings': analysis['security_findings'],
